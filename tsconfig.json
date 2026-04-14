@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    /* 基本設定 */
+    "target": "ES2020",                                  /* コンパイル後のJSバージョン */
+    "module": "CommonJS",                                /* Node.js標準のモジュール形式 */
+    "lib": ["ES2020"],                                   /* 使用する型定義ライブラリ */
+    "outDir": "./dist",                                  /* コンパイル後の出力先 */
+    "rootDir": "./",                                     /* ソースのルート */
+
+    /* 厳格な型チェック（バグを減らすために重要） */
+    "strict": true,                                      
+    "noImplicitAny": true,                               
+    "skipLibCheck": true,                                
+
+    /* モジュール解決の設定 */
+    "moduleResolution": "node",                          
+    "esModuleInterop": true,                             /* CommonJSとESModulesの互換性 */
+    "resolveJsonModule": true,                           /* JSONファイルを直接import可能にする */
+    
+    /* 便利な設定 */
+    "forceConsistentCasingInFileNames": true,            /* ファイル名の大文字小文字を厳格に */
+    "sourceMap": true                                    /* デバッグを容易にする */
+  },
+  "include": ["src/**/*", "tests/**/*"],                 /* 対象ファイル */
+  "exclude": ["node_modules", "**/*.test.ts"]            /* 除外ファイル */
+}
