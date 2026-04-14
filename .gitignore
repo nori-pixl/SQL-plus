@@ -1,0 +1,22 @@
+# 依存ライブラリ (npm install で再生成されるため不要)
+node_modules/
+
+# コンパイル結果 (TypeScriptをビルドした後のJSファイル)
+dist/
+out/
+
+# 実行履歴・ログ (開発環境ごとに生成されるため不要)
+*.log
+sqlplus_activity.log
+test_activity.log
+
+# エディタ設定
+.vscode/
+.idea/
+.DS_Store
+
+# 環境変数 (APIキーなどを含む場合があるため隠す)
+.env
+
+# テスト結果やカバレッジ
+coverage/
