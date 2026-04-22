@@ -1,39 +1,75 @@
-# SQL+
+# SQL+ (SQLP) 
+**SQL-like Syntax + JavaScript Dynamics + Object-Oriented Data.**
 
-AIと連携し、JavaScriptで動的にデータを生成・操作するための言語エンジンです。
+SQL+（エスキューエル・プラス）は、AI時代のデータ操作とシステム連携のために設計された、**「動くデータ」を定義するプログラミング言語**です。
 
-## 特徴
-- **JSONベース**: 保存と可視化が容易
-- **JS統合**: ロジックにJavaScriptをそのまま利用可能
-- **多言語連携**: マイクラ(Java)やUnity(C#)など、外部ソフトと連携
-- **自動履歴**: すべての操作をファイルとログに自動記録
+---
 
-## 基本コマンド
-- `list.users.add(Taro, 25)` - データの追加
-- `js.if(ddt.count('users') > 0, ...)` - 条件分岐
-- `file.mkdir(data)` - フォルダ生成
+##  プロジェクト構成
+```text
+sql-plus/
+├── src/            # TypeScript：SQLP実行エンジン（核心）
+├── ai_brain/       # Python A：AI思考エンジン（GPT連携）
+├── monitor/        # Python B：リアルタイム可視化モニター（GUI）
+├── docs/           # 命令リファレンス・AI連携ガイド
+├── examples/       # マイクラ建築・データ分析サンプル
+└── start_all.bat   # 1クリック全起動スクリプト
+```
 
-SQL+ コマンドリファレンス
-SQL+は、SQLの直感的なデータ操作に、JavaScriptの動的なロジックを融合させた言語です。
-1. リスト操作 (List Operations)
-データの集合を管理します。
-コマンド	説明	例
-list.[名].add([名前], [値])	リストに要素を追加します。	list.users.add(Taro, 25)
-list.[名].read(all)	リストの内容を 1.名前:値 形式で読み出します。	list.users.read(all)
-list.[名].read(name, value)	1.name="名前",value="順番" 形式で読み出します。	list.users.read(name, value)
-list.[名].count()	リスト内の項目数を返します。	list.users.count()
-list.[名].delete(all)	リストを空にします。	list.users.delete(all)
-list.[名].delete(index=[N])	指定した順番の項目を削除します。	list.users.delete(index=1)
-list.[名].unique()	重複した名前を削除します。	list.users.unique()
-2. 動的ロジック (JS & Logic)
-JavaScriptを利用して複雑な判断やループを行います。ddt オブジェクトを介してデータにアクセスします。
-コマンド	説明	例
-js.run([JSコード])	JSを直接実行します。	js.run(ddt.exec('list.a.add(x,1)'))
-js.if([条件], [True命令], [False命令])	条件分岐を行います。	js.if(ddt.count('a') > 0, list.b.add(ok), list.b.add(ng))
-js.switch([対象], [値:命令], ...)	多分岐を行います。	js.switch(ddt.count('a'), 0:list.log.add(0), default:list.log.add(N))
-js.try([命令], [catch:命令])	エラーハンドリングを行います。	js.try(file.write(...), catch:list.err.add(fs))
-3. ファイル・システム操作 (FileSystem)
-OSのファイルやフォルダを操作します。
-コマンド	説明	例
-file.mkdir([パス])	フォルダを再帰的に作成します。	file.mkdir(data/backups)
-file.write([パス], [内容])	履歴メタデータ付きでJSONを保存します。	file.write(data/save.json, ddt.read(all))
+---
+
+## 主な特徴
+- **SQL風リスト操作**: 直感的な構文でデータの追加・抽出・集計が可能。
+- **JS統合（Dynamic Data）**: リストの中にJavaScriptロジックを直接組み込み、動的な評価を実現。
+- **オブジェクト指向 (OOP)**: クラスとインスタンスの概念により、複雑なデータ構造を整理。
+- **AI・多言語連携**: Python製のAI（思考）と可視化ウィンドウ（表示）、マイクラ等の外部ゲームを一つのハブで統合。
+- **自動履歴 (Activity Log)**: すべての操作をメタデータとして自動記録。
+
+---
+
+##  基本コマンド
+
+### 1. リスト操作
+```sql
+list.users.add(Taro, 25)           -- データの追加
+list.users.read(name, value)      -- 1.name="Taro",value="1" 形式で読込
+list.users.count()                 -- 件数取得
+```
+
+### 2. オブジェクト指向 (OOP)
+```sql
+obj.class(Tower, [height|material]) -- 設計図の作成
+obj.new(Tower, NorthTower)          -- 実体の生成
+obj.NorthTower.set(height, 50)      -- プロパティの設定
+```
+
+### 3. 動的ロジック & AI連携
+```sql
+js.if(sqlp.count('users') > 0, ai.ask("要約して"), list.log.add(empty))
+ai.config(model="gpt-4o", temp=0.8) -- AIの挙動を動的に変更
+view.chart(type="pie")              -- グラフ形式を円グラフに変更
+```
+
+---
+
+##  はじめかた
+
+### 1. インストール
+```bash
+# TypeScriptエンジンの準備
+npm install
+
+# Python AI & モニターの準備
+pip install -r requirements.txt
+```
+
+### 2. 起動
+```bash
+# 全システムを一斉起動
+./start_all.bat
+```
+
+---
+
+## 📄 ライセンス
+MIT License - 自由に使用、改造、配布が可能です。
