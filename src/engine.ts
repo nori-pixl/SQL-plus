@@ -1,165 +1,122 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-// リスト内のデータ形式
-export type ListItem = { 
-  name: string; 
-  value: any; 
-  [key: string]: any 
-};
+export type ListItem = { name: string; value: any; [key: string]: any };
 
 export class SQLPlusEngine {
   private lists: Map<string, ListItem[]> = new Map();
+  private classes: Map<string, string[]> = new Map(); // クラス設計図
+  private instances: Map<string, Record<string, any>> = new Map(); // オブジェクト実体
   private history: string[] = [];
+  private viewSettings = { type: "bar" };
 
-  /**
-   * @param logFilePath 履歴（ログ）の保存先
-   */
   constructor(private logFilePath: string = 'sqlplus_activity.log') {
-    this.logAction("SQL+ Engine Initialized");
+    this.logAction("SQL+ Engine (SQLP) Initialized");
   }
 
-  /**
-   * JSロジック（js.runやjs.if）の中で「ddt」として使えるインターフェース
-   */
-  private get ddtContext() {
+  // JS実行環境 (JSの中から 'sqlp' オブジェクトとして利用可能)
+  private get sqlpContext() {
     return {
       read: (name: string) => this.lists.get(name) || [],
       count: (name: string) => (this.lists.get(name) || []).length,
-      has: (name: string, key: string) => (this.lists.get(name) || []).some(i => i.name === key),
-      exec: (cmd: string) => this.execute(cmd),
-      listNames: () => Array.from(this.lists.keys())
+      instance: (name: string) => this.instances.get(name),
+      exec: (cmd: string) => this.execute(cmd)
     };
   }
 
-  /**
-   * メイン実行メソッド：すべての命令はここを通ります
-   */
   public execute(command: string): any {
-    const timestamp = new Date().toISOString();
     this.logAction(`Execute: ${command}`);
 
-    // --- 1. JS連携・条件分岐系 (SQL+) ---
-    if (command.startsWith("js.run(")) {
-      const code = this.extractArgs(command);
-      return new Function('ddt', code)(this.ddtContext);
+    // --- 1. オブジェクト指向 (OOP) ---
+    // obj.class(Tower, [height|material])
+    if (command.startsWith("obj.class(")) {
+      const [className, propsRaw] = this.parseCSVArgs(command);
+      const props = propsRaw.replace(/[\[\]]/g, "").split("|").map(p => p.trim());
+      this.classes.set(className, props);
+      return `Class '${className}' defined`;
+    }
+    // obj.new(Tower, NorthTower)
+    if (command.startsWith("obj.new(")) {
+      const [className, instName] = this.parseCSVArgs(command);
+      if (!this.classes.has(className)) return `Error: Class ${className} not found`;
+      this.instances.set(instName, { _type: className });
+      return `Instance '${instName}' created`;
+    }
+    // obj.NorthTower.set(height, 50)
+    if (command.startsWith("obj.") && command.includes(".set(")) {
+      const parts = command.split(".");
+      const instName = parts[1];
+      const [prop, val] = this.parseCSVArgs(command);
+      const inst = this.instances.get(instName);
+      if (inst) {
+        inst[prop] = isNaN(Number(val)) ? val : Number(val);
+        return `${instName}.${prop} = ${val}`;
+      }
     }
 
+    // --- 2. JS連携 & 条件分岐 ---
     if (command.startsWith("js.if(")) {
       const [cond, tCmd, fCmd] = this.parseCSVArgs(command);
-      const isTrue = new Function('ddt', `return ${cond}`)(this.ddtContext);
+      const isTrue = new Function('sqlp', `return ${cond}`)(this.sqlpContext);
       return isTrue ? this.execute(tCmd) : (fCmd ? this.execute(fCmd) : null);
     }
-
-    if (command.startsWith("js.switch(")) {
-      const [targetExpr, ...cases] = this.parseCSVArgs(command);
-      const targetVal = new Function('ddt', `return ${targetExpr}`)(this.ddtContext);
-      for (const c of cases) {
-        const [val, cmd] = c.split(":").map(s => s.trim());
-        if (val === String(targetVal) || val === "default") return this.execute(cmd);
-      }
+    if (command.startsWith("js.run(")) {
+      const code = this.extractArgs(command);
+      return new Function('sqlp', code)(this.sqlpContext);
     }
 
-    if (command.startsWith("js.try(")) {
-      const [mainCmd, catchPart] = this.parseCSVArgs(command);
-      try {
-        return this.execute(mainCmd);
-      } catch (e: any) {
-        return this.execute(catchPart.replace("catch:", "").trim());
-      }
-    }
-
-    // --- 2. SQL風リスト操作系 ---
+    // --- 3. SQL風リスト操作 ---
     const tokens = command.split(".");
     if (tokens[0] === "list") {
       const listName = tokens[1];
-      const actionRaw = tokens[2];
-      
+      const action = tokens[2];
       if (!this.lists.has(listName)) this.lists.set(listName, []);
       const list = this.lists.get(listName)!;
 
-      // add(名前, 値)
-      if (actionRaw.startsWith("add(")) {
-        const [name, value] = this.parseCSVArgs(actionRaw);
-        list.push({ 
-          name, 
-          value: isNaN(Number(value)) ? value : Number(value) 
-        });
+      if (action.startsWith("add(")) {
+        const [n, v] = this.parseCSVArgs(action);
+        list.push({ name: n, value: isNaN(Number(v)) ? v : Number(v) });
         return "Added";
       }
-
-      // read(options) -> 1.name="Taro",value="1" 形式
-      if (actionRaw.startsWith("read(")) {
-        const opts = this.extractArgs(actionRaw);
+      if (action.startsWith("read(")) {
+        const opts = this.extractArgs(action);
         return list.map((item, i) => {
           const order = i + 1;
-          let str = `${order}.`;
-          const parts: string[] = [];
-          if (opts.includes("name")) parts.push(`name="${item.name}"`);
-          if (opts.includes("value")) parts.push(`value="${order}"`);
-          
-          return parts.length > 0 ? `${str}${parts.join(",")}` : `${str}${item.name}:${item.value}`;
+          if (opts.includes("name") || opts.includes("value")) {
+            return `${order}.name="${item.name}",value="${order}"`;
+          }
+          return `${order}.${item.name}:${item.value}`;
         });
-      }
-
-      // count(), sum(), unique(), delete(all/index=N)
-      if (actionRaw === "count()") return list.length;
-      if (actionRaw === "sum()") return list.reduce((a, b) => a + (Number(b.value) || 0), 0);
-      if (actionRaw === "unique()") {
-        const seen = new Set();
-        this.lists.set(listName, list.filter(i => !seen.has(i.name) && seen.add(i.name)));
-        return "Uniqued";
-      }
-      if (actionRaw === "delete(all)") { list.length = 0; return "Cleared"; }
-      if (actionRaw.startsWith("delete(index=")) {
-        const idx = parseInt(actionRaw.match(/\d+/)![0]) - 1;
-        list.splice(idx, 1);
-        return "Deleted";
       }
     }
 
-    // --- 3. ファイル・フォルダ・履歴生成系 ---
-    if (command.startsWith("file.mkdir(")) {
-      const dir = this.extractArgs(command);
-      fs.mkdirSync(dir, { recursive: true });
-      return `Dir Created: ${dir}`;
+    // --- 4. 可視化・システム ---
+    if (command.startsWith("view.chart(")) {
+      const [type] = this.parseCSVArgs(command);
+      this.viewSettings.type = type.replace(/['"]/g, "");
+      return `View Mode: ${this.viewSettings.type}`;
     }
 
     if (command.startsWith("file.write(")) {
       const [filePath, content] = this.parseCSVArgs(command);
-      // 履歴データも含めて保存
-      const outputData = {
-        _sqlplus_meta: {
-          timestamp,
-          command,
-          description: "Auto-generated by SQL+"
-        },
-        data: content
-      };
+      const out = { data: content, view_config: this.viewSettings };
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, JSON.stringify(outputData, null, 2));
-      return `File Written with History: ${filePath}`;
+      fs.writeFileSync(filePath, JSON.stringify(out, null, 2));
+      return `File Written: ${filePath}`;
     }
 
-    return "Command not recognized";
+    return "Command unknown";
   }
 
-  // --- ユーティリティ ---
   private logAction(msg: string) {
-    const entry = `[${new Date().toISOString()}] ${msg}`;
-    this.history.push(entry);
-    fs.appendFileSync(this.logFilePath, entry + '\n');
+    fs.appendFileSync(this.logFilePath, `[${new Date().toISOString()}] ${msg}\n`);
   }
 
   private extractArgs(cmd: string): string {
-    const match = cmd.match(/\((.*)\)/s);
-    return match ? match[1] : "";
+    return cmd.match(/\((.*)\)/s)?.[1] || "";
   }
 
   private parseCSVArgs(cmd: string): string[] {
-    const argsString = this.extractArgs(cmd);
-    if (!argsString) return [];
-    // カンマで分割するが、カッコ内のカンマは無視する簡易パース
-    return argsString.split(/,(?![^\(]*\))/).map(s => s.trim());
+    return this.extractArgs(cmd).split(/,(?![^\(]*\))/).map(s => s.trim());
   }
 }
