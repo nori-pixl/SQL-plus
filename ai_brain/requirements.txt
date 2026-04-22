@@ -1,0 +1,12 @@
+# AI Brain用（FlaskサーバーとOpenAI連携）
+flask
+openai
+requests
+
+# Monitor用（モダンなGUIとグラフ描画）
+customtkinter
+matplotlib
+
+# データ処理補助（将来的な拡張用）
+pandas
+numpy
