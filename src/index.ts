@@ -1,4 +1,30 @@
 import { SQLPlusEngine } from './engine';
+import express from 'express';
+
+const app = express();
+const sqlp = new SQLPlusEngine();
+const port = 3000;
+
+app.use(express.json());
+// フロントエンド用の静的ファイル（HTML）を配信
+app.use(express.static('public'));
+
+// ブラウザからSQL+の命令を受け取るAPI
+app.post('/exec', (req, res) => {
+    const { command } = req.body;
+    const result = sqlp.execute(command);
+    res.json({ result });
+});
+
+// 現在の全リストデータを取得するAPI（確認用）
+app.get('/data', (req, res) => {
+    const data = sqlp.execute("js.run(return ddt.listNames().map(name => ({name, data: ddt.read(name)})))");
+    res.json(data);
+});
+
+app.listen(port, () => {
+    console.log(`SQL+ Web Server: http://localhost:${port}`);
+});
 
 // エンジンのインスタンスを作成
 const sqlp = new SQLPlusEngine();
